@@ -121,7 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sliderIndicator = document.getElementById('slider-indicator');
     const arrowLeft = document.querySelector('.slider-arrow--left');
     const arrowRight = document.querySelector('.slider-arrow--right');
-    const hotspots = document.querySelectorAll('.hotspot');
+    const primaryHomeSlide = document.querySelector('.slide--home:not(.slide--clone)') || document.querySelector('.slide--home');
+    const hotspots = primaryHomeSlide ? primaryHomeSlide.querySelectorAll('.hotspot') : document.querySelectorAll('.hotspot');
     const modalOverlay = document.getElementById('modal-overlay');
     const modalContentBox = document.getElementById('modal-content-inject');
     const closeModalBtn = document.querySelector('.close-modal');
@@ -132,6 +133,296 @@ document.addEventListener('DOMContentLoaded', () => {
         'modal-services': 'services',
         'modal-teaching': 'teaching'
     };
+
+    let networkCanvas = null;
+    let networkCtx = null;
+    const hotspotMotionMediaQuery = window.matchMedia('(max-width: 768px)');
+    const hotspotPhysicsVariants = {
+        desktop: {
+            repulsionRadius: 380,
+            repulsionStrength: 18000,
+            edgeMargin: 120,
+            edgeForce: 0.007,
+            centerPull: 0.00022,
+            damping: 0.975,
+            maxSpeed: 1.4,
+            connectionDistance: 300,
+            noiseForce: 0.08,
+            noiseSpeed: 0.00035,
+            renderLerp: 0.08,
+            spawnRadiusX: 200,
+            spawnBandY: 120,
+            spawnJitterY: 60,
+            initialSpeed: 0.35
+        },
+        mobile: {
+            repulsionRadius: 240,
+            repulsionStrength: 9000,
+            edgeMargin: 90,
+            edgeForce: 0.01,
+            centerPull: 0.00035,
+            damping: 0.982,
+            maxSpeed: 0.85,
+            connectionDistance: 200,
+            noiseForce: 0.05,
+            noiseSpeed: 0.00028,
+            renderLerp: 0.14,
+            spawnRadiusX: 150,
+            spawnBandY: 100,
+            spawnJitterY: 50,
+            initialSpeed: 0.2
+        }
+    };
+    let activePhysics = hotspotPhysicsVariants.desktop;
+    const hotspotMotionState = {
+        nodes: [],
+        bounds: { width: 0, height: 0 },
+        animationId: null
+    };
+
+    const ensureHotspotCanvas = () => {
+        if (networkCanvas || !scene) return;
+        networkCanvas = document.createElement('canvas');
+        networkCanvas.id = 'hotspot-network';
+        networkCanvas.setAttribute('aria-hidden', 'true');
+        scene.appendChild(networkCanvas);
+        networkCtx = networkCanvas.getContext('2d');
+    };
+
+    const resetHotspotLayout = () => {
+        if (hotspots) {
+            hotspots.forEach((spot) => {
+                spot.style.left = '';
+                spot.style.top = '';
+                spot.style.transform = '';
+                spot.style.zIndex = '';
+            });
+        }
+        if (networkCtx && networkCanvas) {
+            networkCtx.clearRect(0, 0, networkCanvas.width || 0, networkCanvas.height || 0);
+        }
+        if (networkCanvas) {
+            networkCanvas.style.opacity = '0';
+        }
+        if (hotspotMotionState.animationId) {
+            cancelAnimationFrame(hotspotMotionState.animationId);
+            hotspotMotionState.animationId = null;
+        }
+        hotspotMotionState.nodes = [];
+    };
+
+    const updateHotspotBounds = () => {
+        if (!networkCanvas || !scene) return;
+        const rect = scene.getBoundingClientRect();
+        hotspotMotionState.bounds.width = rect.width;
+        hotspotMotionState.bounds.height = rect.height;
+        networkCanvas.width = rect.width;
+        networkCanvas.height = rect.height;
+        networkCanvas.style.width = `${rect.width}px`;
+        networkCanvas.style.height = `${rect.height}px`;
+    };
+
+    const setActivePhysicsVariant = () => {
+        activePhysics = hotspotMotionMediaQuery.matches
+            ? hotspotPhysicsVariants.mobile
+            : hotspotPhysicsVariants.desktop;
+    };
+
+    const rebuildHotspotNodes = (preservePositions = false) => {
+        const { width, height } = hotspotMotionState.bounds;
+        if (!width || !height || !hotspots?.length) {
+            hotspotMotionState.nodes = [];
+            return;
+        }
+        if (preservePositions && hotspotMotionState.nodes.length) {
+            hotspotMotionState.nodes.forEach((node) => {
+                const clampedX = Math.min(Math.max(node.position.x, 40), width - 40);
+                const clampedY = Math.min(Math.max(node.position.y, 40), height - 40);
+                node.position.x = clampedX;
+                node.position.y = clampedY;
+                if (node.renderPosition) {
+                    node.renderPosition.x = clampedX;
+                    node.renderPosition.y = clampedY;
+                }
+            });
+            return;
+        }
+        const centerX = width / 2;
+        const centerY = height / 2 + 20;
+        const {
+            spawnRadiusX = 200,
+            spawnBandY = 120,
+            spawnJitterY = 60,
+            initialSpeed = 0.35
+        } = activePhysics;
+
+        hotspotMotionState.nodes = Array.from(hotspots).map((element, index) => ({
+            el: element,
+            position: {
+                x: centerX + (Math.random() - 0.5) * spawnRadiusX,
+                y: centerY + (index - (hotspots.length - 1) / 2) * spawnBandY + (Math.random() - 0.5) * spawnJitterY
+            },
+            velocity: {
+                x: (Math.random() - 0.5) * initialSpeed,
+                y: (Math.random() - 0.5) * initialSpeed
+            },
+            acceleration: { x: 0, y: 0 },
+            noiseSeed: Math.random() * Math.PI * 2,
+            renderPosition: null
+        }));
+        hotspotMotionState.nodes.forEach((node) => {
+            node.renderPosition = {
+                x: node.position.x,
+                y: node.position.y
+            };
+        });
+    };
+
+    const drawHotspotConnections = () => {
+        if (!networkCtx || !networkCanvas) return;
+        const { width, height } = hotspotMotionState.bounds;
+        networkCtx.clearRect(0, 0, width, height);
+
+        const nodes = hotspotMotionState.nodes;
+        const connectionDistance = activePhysics.connectionDistance || 260;
+        for (let i = 0; i < nodes.length; i += 1) {
+            for (let j = i + 1; j < nodes.length; j += 1) {
+                const pointA = nodes[i].renderPosition || nodes[i].position;
+                const pointB = nodes[j].renderPosition || nodes[j].position;
+                const dx = pointA.x - pointB.x;
+                const dy = pointA.y - pointB.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > connectionDistance) continue;
+                const alpha = 1 - dist / connectionDistance;
+                networkCtx.strokeStyle = `rgba(0, 255, 157, ${0.22 * alpha})`;
+                networkCtx.lineWidth = 0.8 + alpha * 0.6;
+                networkCtx.beginPath();
+                networkCtx.moveTo(pointA.x, pointA.y);
+                networkCtx.lineTo(pointB.x, pointB.y);
+                networkCtx.stroke();
+            }
+        }
+    };
+
+    const applyEdgeRepulsion = (node) => {
+        const { width, height } = hotspotMotionState.bounds;
+        const { edgeMargin = 120, edgeForce = 0.008 } = activePhysics;
+
+        if (node.position.x < edgeMargin) {
+            node.acceleration.x += (edgeMargin - node.position.x) * edgeForce;
+        } else if (node.position.x > width - edgeMargin) {
+            node.acceleration.x -= (node.position.x - (width - edgeMargin)) * edgeForce;
+        }
+
+        if (node.position.y < edgeMargin) {
+            node.acceleration.y += (edgeMargin - node.position.y) * edgeForce;
+        } else if (node.position.y > height - edgeMargin) {
+            node.acceleration.y -= (node.position.y - (height - edgeMargin)) * edgeForce;
+        }
+    };
+
+    const animateHotspots = () => {
+        if (!scene || !hotspots?.length || !networkCanvas || !networkCtx) return;
+        const { width, height } = hotspotMotionState.bounds;
+        if (!width || !height || !hotspotMotionState.nodes.length) {
+            hotspotMotionState.animationId = requestAnimationFrame(animateHotspots);
+            return;
+        }
+
+        const {
+            repulsionRadius,
+            repulsionStrength,
+            centerPull,
+            damping,
+            maxSpeed,
+            noiseForce,
+            noiseSpeed,
+            renderLerp
+        } = activePhysics;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const nodes = hotspotMotionState.nodes;
+        const time = performance.now();
+
+        nodes.forEach((node) => {
+            node.acceleration.x = 0;
+            node.acceleration.y = 0;
+        });
+
+        for (let i = 0; i < nodes.length; i += 1) {
+            for (let j = i + 1; j < nodes.length; j += 1) {
+                const dx = nodes[i].position.x - nodes[j].position.x;
+                const dy = nodes[i].position.y - nodes[j].position.y;
+                const distSq = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSq) || 0.001;
+                if (dist > repulsionRadius) continue;
+                const force = repulsionStrength / (distSq + 0.0001);
+                const fx = (dx / dist) * force;
+                const fy = (dy / dist) * force;
+                nodes[i].acceleration.x += fx;
+                nodes[i].acceleration.y += fy;
+                nodes[j].acceleration.x -= fx;
+                nodes[j].acceleration.y -= fy;
+            }
+        }
+
+        nodes.forEach((node) => {
+            node.acceleration.x += (centerX - node.position.x) * centerPull;
+            node.acceleration.y += (centerY - node.position.y) * centerPull;
+            const noiseAngle = time * noiseSpeed + node.noiseSeed;
+            node.acceleration.x += Math.cos(noiseAngle) * noiseForce;
+            node.acceleration.y += Math.sin(noiseAngle) * noiseForce;
+            applyEdgeRepulsion(node);
+
+            node.velocity.x = (node.velocity.x + node.acceleration.x) * damping;
+            node.velocity.y = (node.velocity.y + node.acceleration.y) * damping;
+
+            const speed = Math.sqrt(node.velocity.x * node.velocity.x + node.velocity.y * node.velocity.y);
+            if (speed > maxSpeed) {
+                node.velocity.x = (node.velocity.x / speed) * maxSpeed;
+                node.velocity.y = (node.velocity.y / speed) * maxSpeed;
+            }
+
+            node.position.x += node.velocity.x;
+            node.position.y += node.velocity.y;
+            node.position.x = Math.min(Math.max(node.position.x, 40), width - 40);
+            node.position.y = Math.min(Math.max(node.position.y, 60), height - 60);
+
+            node.renderPosition.x += (node.position.x - node.renderPosition.x) * renderLerp;
+            node.renderPosition.y += (node.position.y - node.renderPosition.y) * renderLerp;
+
+            node.el.style.left = `${node.renderPosition.x}px`;
+            node.el.style.top = `${node.renderPosition.y}px`;
+            node.el.style.transform = 'translate(-50%, -50%)';
+        });
+
+        drawHotspotConnections();
+        hotspotMotionState.animationId = requestAnimationFrame(animateHotspots);
+    };
+
+    const initHotspotMotion = (preserve = false) => {
+        setActivePhysicsVariant();
+        if (!hotspots?.length) return;
+        ensureHotspotCanvas();
+        if (!networkCanvas) return;
+        networkCanvas.style.opacity = '1';
+        updateHotspotBounds();
+        rebuildHotspotNodes(preserve);
+        if (hotspotMotionState.animationId) {
+            cancelAnimationFrame(hotspotMotionState.animationId);
+        }
+        animateHotspots();
+    };
+
+    const handleHotspotMediaChange = () => {
+        initHotspotMotion();
+    };
+
+    if (hotspotMotionMediaQuery.addEventListener) {
+        hotspotMotionMediaQuery.addEventListener('change', handleHotspotMediaChange);
+    } else if (hotspotMotionMediaQuery.addListener) {
+        hotspotMotionMediaQuery.addListener(handleHotspotMediaChange);
+    }
 
     const translations = {
         es: {
@@ -758,6 +1049,14 @@ const homeSlideLabels = {
     };
 
     initSlider();
+    initHotspotMotion();
+
+    window.addEventListener('resize', () => {
+        updateHotspotBounds();
+        if (hotspotMotionState.nodes.length) {
+            rebuildHotspotNodes(true);
+        }
+    });
 
     const modalData = {
         es: {

@@ -452,6 +452,15 @@ body {
     overflow: hidden; /* Oculta el área extra fuera del viewport */
 }
 
+#hotspot-network {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 45;
+}
+
 .character-wrapper {
     position: relative;
     width: 1000px;
@@ -484,6 +493,18 @@ body {
 
 .intro-line strong {
     font-weight: 600;
+}
+
+.swipe-hint {
+    margin-top: 0.75rem;
+    display: none;
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.65);
+    opacity: 0;
+    filter: blur(10px);
+    transition: opacity 0.4s ease;
 }
 
 .changing-word {
@@ -550,32 +571,22 @@ body {
 /* --- Hotspots (Orbes flotantes) --- */
 .hotspot {
     position: absolute;
+    top: 50%;
+    left: 50%;
     display: flex;
     align-items: center;
     cursor: pointer;
     z-index: 50; /* Por encima de la foto pero debajo del modal */
     pointer-events: auto;
+    transform: translate(-50%, -50%);
+    will-change: transform;
 }
 
-/* Posiciones específicas - fijas en la pantalla, alineadas con el centro del cuerpo de la foto */
-.h-1 { 
-    top: 23%; /* Más arriba para crear patrón zig-zag */
-    left: calc(50% - 320px); /* Más separado del centro - cara izquierda */
-} /* Euromon - desde el centro superior izquierdo del cuerpo */
-.h-2 { 
-    bottom: 35%; 
-    left: calc(50% - 400px); /* Mucho más separado hacia la izquierda - cuerpo */
-} /* AI Lab - desde el centro inferior izquierdo del cuerpo */
-.h-3 { 
-    top: 35%; 
-    right: calc(50% - 320px); 
-    flex-direction: row-reverse; 
-} /* Servicios - desde el centro superior derecho del cuerpo */
-.h-4 { 
-    bottom: 25%; /* Más abajo para crear patrón zig-zag */
-    right: calc(50% - 450px); 
-    flex-direction: row-reverse; 
-} /* Docencia - desde el centro inferior derecho del cuerpo */
+.h-3,
+.h-4 {
+    flex-direction: row-reverse;
+    text-align: right;
+}
 
 .hotspot-dot {
     width: 12px;
@@ -781,6 +792,19 @@ body {
     100% { transform: scale(2.5); opacity: 0; }
 }
 
+@keyframes swipeHintReveal {
+    0% {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 0.85;
+        filter: blur(0);
+        transform: translateY(0);
+    }
+}
+
 /* Responsive para móviles */
 @media (max-width: 768px) {
     body {
@@ -809,6 +833,12 @@ body {
         justify-content: space-between;
         padding: 1rem 0.75rem 4.5rem;
         min-height: calc(100vh - 4rem);
+    }
+
+    .swipe-hint {
+        display: block;
+        text-align: center;
+        animation: swipeHintReveal 5s ease-out 5s forwards;
     }
 
     .intro-copy {
@@ -889,34 +919,15 @@ body {
         padding-bottom: 1rem;
         align-items: flex-end;
     }
-    
-    /* Hotspots ajustados para móvil - solo puntos, sin líneas */
-    .hotspot-line {
-        display: none; /* Ocultar líneas en móvil */
-    }
-    
-    /* Posiciones de hotspots en móvil - puntos que salen del cuerpo */
-    .h-1 { 
-        top: 30%; 
-        left: calc(50% - 50px); /* Punto en la cara izquierda */
-    }
-    .h-2 { 
-        bottom: 30%; 
-        left: calc(50% - 150px); /* Punto en el cuerpo izquierdo */
-    }
-    .h-3 { 
-        top: 30%; 
-        right: calc(50% - 50px); 
-    }
-    .h-4 { 
-        bottom: 30%; 
-        right: calc(50% - 150px); 
-    }
-    
+
     /* Asegurar que los puntos sean clickeables */
     .hotspot-dot {
         width: 16px; /* Puntos un poco más grandes en móvil para facilitar el click */
         height: 16px;
+    }
+
+    .hotspot-line {
+        display: none;
     }
     
     .hotspot-card {
