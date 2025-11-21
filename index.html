@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arturo | AI & Marketing Expert</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Fuente moderna y geométrica -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Fondo Orgánico Animado -->
+    <canvas id="organic-bg"></canvas>
+
+    <!-- Navegación Superior -->
+    <nav class="top-nav">
+        <div class="logo">ARTURO.<span class="accent">AI</span></div>
+        <div class="menu-items">
+            <a href="#" class="nav-link" data-i18n="nav.work">Work</a>
+            <a href="#" class="nav-link btn-contact" data-i18n="nav.contact">Contacto</a>
+            <div class="lang-switch" role="group" aria-label="Selector de idioma">
+                <button class="lang-btn active" data-lang="es">ES</button>
+                <button class="lang-btn" data-lang="en">EN</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="slider" id="slider">
+
+        <button class="slider-arrow slider-arrow--left" aria-label="Slide anterior">
+            <svg class="slider-arrow__icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="15 5 7 12 15 19"></polyline>
+            </svg>
+        </button>
+
+        <div class="slides-wrapper" id="slides-wrapper">
+            <section class="slide slide--home">
+                <!-- Escena Principal (Contenedor 3D) -->
+                <main class="scene" id="scene">
+
+                    <!-- Texto de presentación -->
+                    <section class="intro-copy">
+                        <p class="intro-line">
+                            <span data-i18n="intro.hello">Hola</span>
+                            <span class="changing-word" id="changing-word"></span><span class="typing-cursor" id="typing-cursor">|</span>,
+                        </p>
+                        <p class="intro-line">
+                            <span data-i18n="intro.nameLine">mi nombre es</span>
+                            <strong>Arturo Martínez</strong>
+                        </p>
+                    </section>
+                    
+                    <!-- Contenedor del Personaje -->
+                    <div class="character-wrapper" id="character-wrapper">
+                        
+                        <!-- Imagen y Efecto Wireframe -->
+                        <div class="character-img-box">
+                            <!-- Foto de Arturo -->
+                            <img src="Arturo_NB.png" alt="Arturo Portrait" class="main-photo">
+                            <!-- Capa de red neuronal/wireframe al hacer hover -->
+                            <div class="tech-overlay"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Hotspots (Puntos de interés) - Fuera del wrapper para que no se muevan -->
+                    <!-- Euromon PLV -->
+                    <div class="hotspot h-1" data-target="modal-euromon">
+                        <div class="hotspot-dot"></div>
+                        <div class="hotspot-line"></div>
+                        <div class="hotspot-card">
+                            <h3 data-i18n="hotspots.euromon.title">Euromon PLV</h3>
+                            <p data-i18n="hotspots.euromon.description">Transformación digital retail</p>
+                            <div class="tags">
+                                <span data-i18n="hotspots.euromon.tags.0">Retail</span>
+                                <span data-i18n="hotspots.euromon.tags.1">Data</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The AI Lab -->
+                    <div class="hotspot h-2" data-target="modal-ailab">
+                        <div class="hotspot-dot"></div>
+                        <div class="hotspot-line"></div>
+                        <div class="hotspot-card">
+                            <h3 data-i18n="hotspots.ailab.title">The AI Lab</h3>
+                            <p data-i18n="hotspots.ailab.description">Micro-vídeos de IA</p>
+                            <div class="tags">
+                                <span data-i18n="hotspots.ailab.tags.0">Contenido</span>
+                                <span data-i18n="hotspots.ailab.tags.1">Growth</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicios -->
+                    <div class="hotspot h-3" data-target="modal-services">
+                        <div class="hotspot-dot"></div>
+                        <div class="hotspot-line"></div>
+                        <div class="hotspot-card">
+                            <h3 data-i18n="hotspots.services.title">Servicios</h3>
+                            <p data-i18n="hotspots.services.description">Consultoría estratégica</p>
+                            <div class="tags">
+                                <span data-i18n="hotspots.services.tags.0">Strategy</span>
+                                <span data-i18n="hotspots.services.tags.1">Growth</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Docencia -->
+                    <div class="hotspot h-4" data-target="modal-teaching">
+                        <div class="hotspot-dot"></div>
+                        <div class="hotspot-line"></div>
+                        <div class="hotspot-card">
+                            <h3 data-i18n="hotspots.teaching.title">Docencia</h3>
+                            <p data-i18n="hotspots.teaching.description">Formación in-company</p>
+                            <div class="tags">
+                                <span data-i18n="hotspots.teaching.tags.0">Speaker</span>
+                                <span data-i18n="hotspots.teaching.tags.1">Workshops</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </main>
+            </section>
+        </div>
+
+        <button class="slider-arrow slider-arrow--right" aria-label="Slide siguiente">
+            <svg class="slider-arrow__icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="9 5 17 12 9 19"></polyline>
+            </svg>
+        </button>
+
+        <div class="slider-indicator" id="slider-indicator"></div>
+    </div>
+
+    <!-- Modal Overlay (Panel lateral) -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-panel">
+            <button class="close-modal">&times;</button>
+            <div class="modal-content" id="modal-content-inject">
+                <!-- El contenido dinámico se inyectará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Datos dinámicos de modales gestionados por JavaScript -->
+    <template id="data-euromon"></template>
+    <template id="data-ailab"></template>
+
+    <script src="script.js"></script>
+</body>
+</html>
