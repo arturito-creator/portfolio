@@ -1347,27 +1347,69 @@ const homeSlideLabels = {
 
     setLanguage(currentLanguage);
     
-    // Efecto Tilt 3D en la foto central - rotación más suave y reducida
-    // Escucha en todo el documento para evitar cortes bruscos al salir del contenedor
-    document.addEventListener('mousemove', (e) => {
-        const x = e.clientX;
-        const y = e.clientY;
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        
-        // Rotación mucho más reducida (de 8 a 3 grados máximo)
-        const rotateX = -((y - centerY) / centerY) * 3; 
-        const rotateY = ((x - centerX) / centerX) * 3;
-        const planeShiftX = ((x - centerX) / centerX) * 12; // desplazamiento sutil en X
-        const planeShiftY = ((y - centerY) / centerY) * 8;  // desplazamiento sutil en Y
-        
-        wrapper.style.transform = `translate3d(${planeShiftX}px, ${planeShiftY}px, 0) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-    });
-    
-    // Cuando el cursor abandona la ventana, vuelve suavemente a la posición inicial
-    window.addEventListener('mouseleave', () => {
-        wrapper.style.transform = `translate3d(0, 0, 0) rotateX(0) rotateY(0)`;
-    });
+    // Efecto Tilt 3D suavizado para evitar tirones
+    const prefersPointerTilt = window.matchMedia('(pointer: fine) and (hover: hover)');
+    if (wrapper && prefersPointerTilt.matches) {
+        const tiltState = {
+            current: { rotateX: 0, rotateY: 0, shiftX: 0, shiftY: 0 },
+            target: { rotateX: 0, rotateY: 0, shiftX: 0, shiftY: 0 },
+            animationId: null,
+            easing: 0.08
+        };
+
+        const applyTiltFrame = () => {
+            const { current, target, easing } = tiltState;
+            current.rotateX += (target.rotateX - current.rotateX) * easing;
+            current.rotateY += (target.rotateY - current.rotateY) * easing;
+            current.shiftX += (target.shiftX - current.shiftX) * easing;
+            current.shiftY += (target.shiftY - current.shiftY) * easing;
+
+            wrapper.style.transform = `translate3d(${current.shiftX}px, ${current.shiftY}px, 0) rotateX(${current.rotateX}deg) rotateY(${current.rotateY}deg)`;
+            tiltState.animationId = requestAnimationFrame(applyTiltFrame);
+
+            if (
+                Math.abs(target.rotateX) < 0.01 &&
+                Math.abs(target.rotateY) < 0.01 &&
+                Math.abs(target.shiftX) < 0.01 &&
+                Math.abs(target.shiftY) < 0.01 &&
+                Math.abs(current.rotateX) < 0.02 &&
+                Math.abs(current.rotateY) < 0.02 &&
+                Math.abs(current.shiftX) < 0.2 &&
+                Math.abs(current.shiftY) < 0.2
+            ) {
+                cancelAnimationFrame(tiltState.animationId);
+                tiltState.animationId = null;
+            }
+        };
+
+        const handleTiltMove = (event) => {
+            const x = event.clientX;
+            const y = event.clientY;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            tiltState.target.rotateX = -((y - centerY) / centerY) * 3;
+            tiltState.target.rotateY = ((x - centerX) / centerX) * 3;
+            tiltState.target.shiftX = ((x - centerX) / centerX) * 12;
+            tiltState.target.shiftY = ((y - centerY) / centerY) * 8;
+
+            if (!tiltState.animationId) {
+                tiltState.animationId = requestAnimationFrame(applyTiltFrame);
+            }
+        };
+
+        const resetTilt = () => {
+            tiltState.target.rotateX = 0;
+            tiltState.target.rotateY = 0;
+            tiltState.target.shiftX = 0;
+            tiltState.target.shiftY = 0;
+            if (!tiltState.animationId) {
+                tiltState.animationId = requestAnimationFrame(applyTiltFrame);
+            }
+        };
+
+        document.addEventListener('mousemove', handleTiltMove);
+        window.addEventListener('mouseleave', resetTilt);
+    }
 
     hotspots.forEach((spot) => {
         spot.addEventListener('click', () => {
