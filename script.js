@@ -582,6 +582,10 @@ const homeSlideLabels = {
 
         buildIndicators(indicatorMeta);
         setActiveIndicator();
+        slidesWrapper.classList.add('is-switching');
+        requestAnimationFrame(() => {
+            slidesWrapper.classList.remove('is-switching');
+        });
     };
 
     const cancelAutoSlide = () => {
@@ -685,11 +689,15 @@ const homeSlideLabels = {
     const rebuildSlider = (lang) => {
         sliderState.isTransitioning = false;
         cancelAutoSlide();
+        slidesWrapper?.classList.add('is-switching');
         buildSlidesForLanguage(lang);
         slidesCollection = Array.from(slidesWrapper.children);
         if (!sliderState.userStoppedAuto) {
             scheduleAutoSlide();
         }
+        requestAnimationFrame(() => {
+            slidesWrapper?.classList.remove('is-switching');
+        });
     };
 
     const initSlider = () => {
